@@ -18,6 +18,7 @@ const int board[] = {
   B00100100
 };
 
+
 const char O = 'O';
 const char X = 'X';
 char winnerChar; // later assign with winner char
@@ -43,31 +44,39 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, 4, 4);
 
 
 
-
-
 void setup() {
   
 
   Serial.begin(115200); // Initialize the serial port and set the baud rate to 115200
   Serial.println("ESP32 is ready!"); 
   
+
   pinMode(latchPin, OUTPUT);  
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
-  displayBoard();
-}
-
-void loop() {
-  char input;
-  do{
-    Serial.println("Press '*' to start Tic Tac Toe!");
-    input = keypad.getKey();
-  } while(input != keys[3][0]);
+  
   
 }
 
+void loop() {
+  
+
+  // NEW game session
+  //displayBoard(); // it act as reset too
+  resetBoard();
+}
 
 
+/*
+  // Code holders
+  Serial.println("Press '*' to start Tic Tac Toe!");
+  input = keypad.getKey();
+  if (input != keys[3][0])
+  {
+    loop();
+  }
+  
+*/
 
 // Below is for the boards
 void displayBoard()
@@ -79,9 +88,8 @@ void displayBoard()
   matrixColsVal(~cols);
   cols <<= 1;
   }
- 
-
 }
+
 
 void matrixRowsVal(int value)
 {
