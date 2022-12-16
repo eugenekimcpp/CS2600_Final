@@ -62,8 +62,8 @@ void loop() {
   
 
   // NEW game session
-  //displayBoard(); // it act as reset too
-  resetBoard();
+  displayBoard(); // it act as reset too
+  //resetBoard();
 }
 
 
