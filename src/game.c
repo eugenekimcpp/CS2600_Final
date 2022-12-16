@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <mosquitto.h> 
 
 
 // functoin prototypes
