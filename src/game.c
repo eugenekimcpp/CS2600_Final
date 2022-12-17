@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <mosquitto.h>
 
 
 
@@ -19,10 +20,12 @@ int checkWinner();
 int isFull();
 void player1Move();
 void player2Move();
+void on_connect(struct mosquitto *mosq, void *obj, int rc);
+void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg);
 
 
 // global variables
-char board[3][3];
+char board[9];
 char winner; 
 const char O = 'O';
 const char X = 'X';
@@ -30,6 +33,25 @@ char winner; // will be used to store user character
 
 int main()
 {
+
+    //mqtt setup 
+    int rc, id=12;
+    mosquitto_lib_init();
+
+    struct mosquitto *mosq;
+
+    mosq = mosquitto_new("pub",true,&id);
+    mosquitto_connect_callback_set(mosq, on_connect);
+    mosquitto_message_callback_set(mosq, on_message);
+
+
+    
+    rc = mosquitto_connect(mosq, "test.mosquitto.org", 1883, 10);
+	if(rc) {
+		printf("Could not connect to Broker with return code %d\n", rc);
+		return -1;
+	}
+    printf("We are now connected to the broker!\n");
 
     // variables
     // use do while loop to mark the borad
@@ -41,9 +63,9 @@ int main()
     srand(time(0)); 
 
     // game lobby
-    printf("Welcome to Tic-Tac-Toe game. \n
-            Waiting for user1 to start the game...");
+    printf("Welcome to Tic-Tac-Toe game. \nWaiting for user1 to start the game...");
     // *******ESP CODE HERE that modity the continue
+    
     if(continue == 0)
     {
         printf("Thanks for playing!\n");
@@ -67,13 +89,32 @@ int main()
                 if(who == 0)
                 {
                     //player 1 move
+                    
                 }
                 else
                 {
-                    //player 2 move
+                    int oFilled = 0;
+                    int o; 
+                    do{
+                        printf("player2's turn (0-8): ");
+                        scanf("%d",&o);
+                        if(board[o] == ' ')
+                        {
+                            board[o] = O;
+                            char *pub = &(char)o;  
+                            mosquitto_publish(mosq,"eugene/omove",1,pub,0,false);
+                        }
+                        else
+                        {
+                            continue; 
+                        }
+                    } while (oFilled == 0);
+
                 }
                 ++counter; 
                 status = checkWinner(); 
+                char *pub_winner = &(char)status; 
+                mosquitto_publish(mosq, "eugene/winnerStatus", pub_winner,0,false);
 
             }while (status == 0);
 
@@ -107,7 +148,10 @@ int main()
       } while(continue == 1);  
 
     }
-    
+    mosquitto_disconnect(mosq);
+	mosquitto_destroy(mosq);
+
+	mosquitto_lib_cleanup();
     return 0;
 }
 
@@ -115,11 +159,11 @@ int main()
 void displayBoard()
 {
     printf("+-----------+\n");
-    printf("| %c | %c | %c |\n", board[0][0],board[0][1],board[0][2]);
+    printf("| %c | %c | %c |\n", board[0],board[1],board[2]);
     printf("+-----------+\n");
-    printf("| %c | %c | %c |\n", board[1][0],board[1][1],board[1][2]);
+    printf("| %c | %c | %c |\n", board[4],board[5],board[6]);
     printf("+-----------+\n");
-    printf("| %c | %c | %c |\n", board[2][0],board[2][1],board[2][2]);
+    printf("| %c | %c | %c |\n", board[7],board[8],board[9]);
     printf("+-----------+\n");
 }
 
@@ -127,10 +171,7 @@ void resetBoard()
 {
     for(int i = 0; i < 3; ++i)
     {
-        for(int j = 0; j < 3; ++j)
-        {
-            board[i][j] = ' ';
-        }
+        board[i] = ' ';
     }
 }
 
@@ -139,14 +180,11 @@ int isFull()
     
     for(int i = 0; i < 3; ++i)
     {
-        for(int j = 0; j<3;++j)
-        {
-            if(board[i][j] == ' ')
+        if(board[i][j] == ' ')
             {
                 // if encounter any open spot, then it not full
                 return 0; 
             }
-        }
     }
 
     return 1; 
@@ -158,47 +196,47 @@ int checkWinner()
     int result = 0; 
     int check; 
 
-    if((board[0][0] == board[0][1]) && (board[0][1] == board[0][2]) && board[0][0] != ' ') 
+    if((board[0] == board[1]) && (board[1] == board[2]) && board[0] != ' ') 
     {
         // Column check start
-        winner = board[0][0]; // store winning character 
+        winner = board[0]; // store winning character 
         return 1;
     }
-    else if((board[1][0] == board[1][1]) && (board[1][1] == board[1][2]) && board[1][0] != ' ') 
+    else if((board[3] == board[4]) && (board[4]== board[5]) && board[3] != ' ') 
     {
-        winner = board[1][0];
+        winner = board[3];
         return 1;    
     }
-    else if((board[2][0] == board[2][1]) && (board[2][1] == board[2][2]) && board[2][0] != ' ')
+    else if((board[6] == board[7]) && (board[7] == board[8]) && board[6] != ' ')
     {
-        winner = board[2][0];
+        winner = board[6];
         return 1; 
     } 
-    else if((board[0][0] == board[1][0]) && (board[1][0] == board[2][0]) && board[0][0] != ' ')
+    else if((board[0] == board[3]) && (board[3] == board[6]) && board[0] != ' ')
     {
         // ROW check start
-        winner = board[0][0];
+        winner = board[0];
         return 1; 
     }
-    else if((board[0][1] == board[1][1]) && (board[1][1] == board[2][1]) && board[0][1] != ' ')
+    else if((board[1] == board[4]) && (board[4] == board[7]) && board[1] != ' ')
     {
-        winner = board[0][1];
+        winner = board[1];
         return 1; 
     }
-    else if((board[0][2] == board[1][2]) && (board[1][2] == board[2][2]) && board[0][2] != ' ')
+    else if((board[2] == board[5]) && (board[5] == board[8]) && board[2] != ' ')
     {
-        winner = board[0][2];
+        winner = board[2];
         return 1; 
     }
-    else if((board[0][0] == board[1][1]) && (board[1][1] == board[2][2]) && board[0][0] != ' ')
+    else if((board[0] == board[4]) && (board[4] == board[8]) && board[0] != ' ')
     {
         // diagnal check start
-        winner = board[0][0];
+        winner = board[0];
         return 1; 
     }
-    else if((board[0][2] == board[1][1]) && (board[1][1] == board[2][0]) && board[0][2] != ' ')
+    else if((board[2] == board[4]) && (board[4] == board[6]) && board[2] != ' ')
     {
-        winner = board[0][2];
+        winner = board[2];
         return 1; 
     }
     else
@@ -222,4 +260,17 @@ int checkWinner()
     
 
 
+}
+
+void on_connect(struct mosquitto *mosq, void *obj, int rc) {
+	printf("ID: %d\n", * (int *) obj);
+	if(rc) {
+		printf("Error with result code: %d\n", rc);
+		exit(-1);
+	}
+	mosquitto_subscribe(mosq, NULL, "eugene/xmove", 0);
+}
+
+void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg) {
+	printf("New message with topic %s: %s\n", msg->topic, (char *) msg->payload);
 }
